@@ -38,6 +38,7 @@ struct JobDetailFeature {
         var aiIsLoading: Bool = false
         var aiError: String? = nil
         var apiKey: String
+        var aiTokenUsage: AITokenUsage = .zero
 
         enum Tab: String, CaseIterable, Equatable {
             case overview = "Overview"
@@ -108,7 +109,7 @@ struct JobDetailFeature {
         // AI
         case sendMessage
         case clearChat
-        case aiResponseReceived(Result<String, Error>)
+        case aiResponseReceived(Result<(String, AITokenUsage), Error>)
         // Delegate
         case delegate(Delegate)
 
@@ -282,7 +283,7 @@ struct JobDetailFeature {
                 return .run { send in
                     await send(.aiResponseReceived(Result {
                         try await claudeClient.chat(key, systemPrompt, messages)
-                    }))
+                    } as Result<(String, AITokenUsage), Error>))
                 }
                 .cancellable(id: CancelID.aiRequest, cancelInFlight: true)
 
@@ -290,11 +291,16 @@ struct JobDetailFeature {
                 state.chatMessages = []
                 state.aiInput = ""
                 state.aiError = nil
+                state.aiTokenUsage = .zero
                 return .none
 
-            case .aiResponseReceived(.success(let text)):
+            case .aiResponseReceived(.success(let (text, usage))):
                 state.aiIsLoading = false
                 state.chatMessages.append(ChatMessage(role: .assistant, content: text))
+                state.aiTokenUsage = AITokenUsage(
+                    inputTokens: state.aiTokenUsage.inputTokens + usage.inputTokens,
+                    outputTokens: state.aiTokenUsage.outputTokens + usage.outputTokens
+                )
                 return .none
 
             case .aiResponseReceived(.failure(let error)):

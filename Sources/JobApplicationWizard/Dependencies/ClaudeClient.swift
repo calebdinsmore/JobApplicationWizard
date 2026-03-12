@@ -1,11 +1,27 @@
 import Foundation
 import ComposableArchitecture
 
+// MARK: - Token Usage
+
+struct AITokenUsage: Equatable {
+    let inputTokens: Int
+    let outputTokens: Int
+
+    static let zero = AITokenUsage(inputTokens: 0, outputTokens: 0)
+
+    /// Estimated cost in USD using claude-sonnet-4-6 pricing ($3/MTok in, $15/MTok out)
+    var estimatedCost: Double {
+        Double(inputTokens) * 3.0 / 1_000_000 + Double(outputTokens) * 15.0 / 1_000_000
+    }
+
+    var totalTokens: Int { inputTokens + outputTokens }
+}
+
 // MARK: - ClaudeClient
 
 struct ClaudeClient {
-    var chat: @Sendable (String, String, [ChatMessage]) async throws -> String
-    // (apiKey, systemPrompt, messageHistory)
+    var chat: @Sendable (String, String, [ChatMessage]) async throws -> (String, AITokenUsage)
+    // (apiKey, systemPrompt, messageHistory) -> (responseText, usage)
 }
 
 extension ClaudeClient: DependencyKey {
@@ -22,7 +38,7 @@ extension ClaudeClient: DependencyKey {
     }
 }
 
-private func sendChatRequest(apiKey: String, system: String, messages: [[String: String]]) async throws -> String {
+private func sendChatRequest(apiKey: String, system: String, messages: [[String: String]]) async throws -> (String, AITokenUsage) {
     guard !apiKey.isEmpty else { throw AIError.noAPIKey }
 
     var request = URLRequest(url: URL(string: "https://api.anthropic.com/v1/messages")!)
@@ -47,12 +63,26 @@ private func sendChatRequest(apiKey: String, system: String, messages: [[String:
     }
 
     let decoded = try JSONDecoder().decode(ClaudeResponse.self, from: data)
-    return decoded.content.first?.text ?? ""
+    let text = decoded.content.first?.text ?? ""
+    let usage = AITokenUsage(
+        inputTokens: decoded.usage.inputTokens,
+        outputTokens: decoded.usage.outputTokens
+    )
+    return (text, usage)
 }
 
 private struct ClaudeResponse: Decodable {
     struct Content: Decodable { let text: String }
+    struct Usage: Decodable {
+        let inputTokens: Int
+        let outputTokens: Int
+        enum CodingKeys: String, CodingKey {
+            case inputTokens = "input_tokens"
+            case outputTokens = "output_tokens"
+        }
+    }
     let content: [Content]
+    let usage: Usage
 }
 
 enum AIError: LocalizedError {

@@ -798,13 +798,27 @@ struct AIAssistantTab: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Mode picker
-            Picker("", selection: $store.aiSelectedAction) {
-                ForEach(AIAction.allCases, id: \.self) { a in
-                    Text(a.rawValue).tag(a)
+            // Mode picker + token usage
+            HStack(spacing: 12) {
+                Picker("", selection: $store.aiSelectedAction) {
+                    ForEach(AIAction.allCases, id: \.self) { a in
+                        Text(a.rawValue).tag(a)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                if store.aiTokenUsage.totalTokens > 0 {
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text("\(store.aiTokenUsage.totalTokens.formatted()) tok")
+                            .font(.footnote).fontWeight(.medium).foregroundColor(.secondary)
+                        Text(String(format: "~$%.4f", store.aiTokenUsage.estimatedCost))
+                            .font(.footnote).foregroundColor(.secondary)
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(Color.secondary.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
             }
-            .pickerStyle(.segmented)
             .padding(.horizontal, 16).padding(.vertical, 8)
             .background(Color(NSColor.controlBackgroundColor))
 
