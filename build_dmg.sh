@@ -27,6 +27,13 @@ cp "$BUILD_DIR/$APP_NAME" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 [ -f "AppIcon.icns" ] && cp "AppIcon.icns" "$APP_BUNDLE/Contents/Resources/AppIcon.icns"
 cp -r "$BUILD_DIR/Sparkle.framework" "$APP_BUNDLE/Contents/Frameworks/Sparkle.framework"
 
+# SPM links the binary against @rpath/Sparkle.framework/Versions/B/Sparkle,
+# but we embed a flat (non-versioned) framework, so retarget the reference.
+install_name_tool \
+    -change "@rpath/Sparkle.framework/Versions/B/Sparkle" \
+            "@rpath/Sparkle.framework/Sparkle" \
+    "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
+
 cat > "$APP_BUNDLE/Contents/Info.plist" << INFOPLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
