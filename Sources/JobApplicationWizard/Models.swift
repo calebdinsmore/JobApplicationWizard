@@ -200,10 +200,38 @@ struct JobApplication: Codable, Identifiable, Equatable {
     }
 }
 
+// MARK: - Work Preference
+
+enum WorkPreference: String, Codable, CaseIterable, Equatable {
+    case remote   = "Remote"
+    case hybrid   = "Hybrid"
+    case onSite   = "On-Site"
+    case flexible = "Flexible"
+}
+
+// MARK: - User Profile
+
+struct UserProfile: Codable, Equatable {
+    var name: String = ""
+    var currentTitle: String = ""
+    var location: String = ""
+    var linkedIn: String = ""
+    var website: String = ""
+    var summary: String = ""
+    var targetRoles: [String] = []
+    var skills: [String] = []
+    var preferredSalary: String = ""
+    var workPreference: WorkPreference = .flexible
+    var resume: String = ""
+    var coverLetterTemplate: String = ""
+}
+
 // MARK: - App Settings
 
 struct AppSettings: Codable, Equatable {
     // API key is stored in the system Keychain, not here.
+    var userProfile: UserProfile = UserProfile()
+    var defaultViewMode: ViewMode = .kanban
 }
 
 // MARK: - AI Action

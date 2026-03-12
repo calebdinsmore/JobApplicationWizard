@@ -1,7 +1,7 @@
 import ComposableArchitecture
 import Foundation
 
-enum ViewMode: String, CaseIterable, Equatable {
+enum ViewMode: String, Codable, CaseIterable, Equatable {
     case kanban = "Kanban"
     case list = "List"
 
@@ -23,6 +23,7 @@ struct AppFeature {
         var filterStatus: JobStatus? = nil
         var viewMode: ViewMode = .kanban
         var showOnboarding: Bool = false
+        var showProfile: Bool = false
         var settings: AppSettings = AppSettings()
         var claudeAPIKey: String = ""   // runtime mirror of Keychain value; never persisted to disk
         var addJob: AddJobFeature.State = AddJobFeature.State()
@@ -66,6 +67,11 @@ struct AppFeature {
         case importCSVResult([JobApplication])
         case dismissOnboarding
         case saveSettingsKey(String)
+        case showProfileTapped
+        case dismissProfile
+        case saveProfile(UserProfile)
+        case defaultViewModeChanged(ViewMode)
+        case resetAllData
     }
 
     @Dependency(\.persistenceClient) var persistence
@@ -94,6 +100,7 @@ struct AppFeature {
 
             case .settingsLoaded(let settings):
                 state.settings = settings
+                state.viewMode = settings.defaultViewMode
                 return .none
 
             case .searchQueryChanged(let q):
@@ -111,7 +118,7 @@ struct AppFeature {
             case .selectJob(let id):
                 state.selectedJobID = id
                 if let id, let job = state.jobs[id: id] {
-                    state.jobDetail = JobDetailFeature.State(job: job, apiKey: state.claudeAPIKey)
+                    state.jobDetail = JobDetailFeature.State(job: job, apiKey: state.claudeAPIKey, userProfile: state.settings.userProfile)
                 } else {
                     state.jobDetail = nil
                 }
@@ -148,7 +155,7 @@ struct AppFeature {
             case .addJob(.delegate(.save(let job))):
                 state.jobs.append(job)
                 state.selectedJobID = job.id
-                state.jobDetail = JobDetailFeature.State(job: job, apiKey: state.claudeAPIKey)
+                state.jobDetail = JobDetailFeature.State(job: job, apiKey: state.claudeAPIKey, userProfile: state.settings.userProfile)
                 state.addJob = AddJobFeature.State()
                 return saveJobs(state.jobs)
 
@@ -202,6 +209,31 @@ struct AppFeature {
                 return .run { _ in
                     keychain.saveAPIKey(key)
                 }
+
+            case .showProfileTapped:
+                state.showProfile = true
+                return .none
+
+            case .dismissProfile:
+                state.showProfile = false
+                return .none
+
+            case .saveProfile(let profile):
+                state.settings.userProfile = profile
+                state.jobDetail?.userProfile = profile
+                return saveSettings(state.settings)
+
+            case .defaultViewModeChanged(let mode):
+                state.viewMode = mode
+                state.settings.defaultViewMode = mode
+                return saveSettings(state.settings)
+
+            case .resetAllData:
+                state.jobs = []
+                state.selectedJobID = nil
+                state.jobDetail = nil
+                state.showOnboarding = true
+                return .run { _ in try? await persistence.saveJobs([]) }
             }
         }
         .ifLet(\.jobDetail, action: \.jobDetail) {
@@ -211,5 +243,9 @@ struct AppFeature {
 
     private func saveJobs(_ jobs: IdentifiedArrayOf<JobApplication>) -> Effect<Action> {
         .run { _ in try? await persistence.saveJobs(Array(jobs)) }
+    }
+
+    private func saveSettings(_ settings: AppSettings) -> Effect<Action> {
+        .run { _ in try? await persistence.saveSettings(settings) }
     }
 }

@@ -4,13 +4,6 @@ import ComposableArchitecture
 struct SidebarView: View {
     @Bindable var store: StoreOf<AppFeature>
 
-    var filterBinding: Binding<JobStatus?> {
-        Binding(
-            get: { store.filterStatus },
-            set: { store.send(.filterStatusChanged($0)) }
-        )
-    }
-
     var body: some View {
         VStack(spacing: 0) {
             // Stats
@@ -59,26 +52,35 @@ struct SidebarView: View {
 
             Divider()
 
-            // Status filter
-            List(selection: filterBinding) {
-                Section("Filter by Status") {
-                    Label("All Jobs", systemImage: "tray.2")
-                        .tag(Optional<JobStatus>.none)
-
-                    ForEach(JobStatus.allCases) { status in
-                        HStack {
-                            Label(status.rawValue, systemImage: status.icon)
-                                .foregroundColor(status.color)
-                            Spacer()
-                            Text("\(store.filteredJobs.filter { $0.status == status }.count)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        .tag(Optional(status))
+            // My Profile card
+            Button { store.send(.showProfileTapped) } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "person.circle.fill")
+                        .font(.system(size: 32))
+                        .foregroundColor(.accentColor)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("My Profile")
+                            .fontWeight(.semibold)
+                        Text(store.settings.userProfile.name.isEmpty
+                             ? "Set up for AI assistance"
+                             : store.settings.userProfile.name)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
+                .padding(12)
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(8)
             }
-            .listStyle(.sidebar)
+            .buttonStyle(.plain)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+
+            Spacer()
 
             Divider()
 

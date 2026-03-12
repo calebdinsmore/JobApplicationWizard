@@ -426,12 +426,13 @@ struct NoteCardGridView: View {
             Divider()
 
             if store.noteCards.isEmpty {
+                Spacer()
                 ContentUnavailableView(
                     "No Notes Yet",
                     systemImage: "note.text",
                     description: Text("Add your first note to capture research, salary info, or anything relevant")
                 )
-                .padding()
+                Spacer()
             } else {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 180))], spacing: 12) {

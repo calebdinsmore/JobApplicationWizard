@@ -87,7 +87,16 @@ private func buildTextView(for job: JobApplication) -> NSTextView {
     let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 595, height: 10000))
     textView.textStorage?.setAttributedString(attrStr)
     textView.isEditable = false
-    textView.sizeToFit()
+
+    // Force layout and size view to actual content height
+    if let lm = textView.layoutManager, let tc = textView.textContainer {
+        lm.ensureLayout(for: tc)
+        let used = lm.usedRect(for: tc)
+        let inset = textView.textContainerInset
+        let contentHeight = ceil(used.height + inset.height * 2)
+        textView.setFrameSize(NSSize(width: 595, height: contentHeight))
+    }
+
     return textView
 }
 

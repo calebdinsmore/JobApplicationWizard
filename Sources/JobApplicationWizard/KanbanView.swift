@@ -15,7 +15,8 @@ struct KanbanView: View {
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 8) {
-                ForEach(JobStatus.allCases) { status in
+                let visibleStatuses = store.filterStatus.map { [$0] } ?? JobStatus.allCases
+                ForEach(visibleStatuses) { status in
                     KanbanRow(
                         status: status,
                         jobs: jobsInColumn(status),

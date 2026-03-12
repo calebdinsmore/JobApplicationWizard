@@ -13,6 +13,8 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 toolbar
                 Divider()
+                StatusFilterBar(store: store)
+                Divider()
                 Group {
                     switch store.viewMode {
                     case .kanban: KanbanView(store: store)
@@ -39,6 +41,17 @@ struct ContentView: View {
             set: { if !$0 { store.send(.dismissOnboarding) } }
         )) {
             OnboardingView(store: store)
+        }
+        .sheet(isPresented: Binding(
+            get: { store.showProfile },
+            set: { if !$0 { store.send(.dismissProfile) } }
+        )) {
+            ProfileView(
+                profile: store.settings.userProfile,
+                onSave: { store.send(.saveProfile($0)) },
+                onDismiss: { store.send(.dismissProfile) }
+            )
+            .frame(minWidth: 560, minHeight: 700)
         }
         .onAppear { store.send(.onAppear) }
     }
@@ -78,6 +91,66 @@ struct ContentView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(Color(NSColor.windowBackgroundColor))
+    }
+}
+
+// MARK: - Status Filter Bar
+
+struct StatusFilterBar: View {
+    let store: StoreOf<AppFeature>
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                FilterPill(label: "All", count: store.jobs.count,
+                           selected: store.filterStatus == nil) {
+                    store.send(.filterStatusChanged(nil))
+                }
+                ForEach(JobStatus.allCases) { status in
+                    FilterPill(label: status.rawValue,
+                               count: store.jobs.filter { $0.status == status }.count,
+                               selected: store.filterStatus == status) {
+                        store.send(.filterStatusChanged(status))
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+        }
+        .background(Color(NSColor.windowBackgroundColor))
+    }
+}
+
+struct FilterPill: View {
+    let label: String
+    let count: Int
+    let selected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Text(label)
+                Text("\(count)")
+                    .font(.caption2)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(selected ? Color.white.opacity(0.25) : Color.secondary.opacity(0.12))
+                    .clipShape(Capsule())
+            }
+            .font(.caption)
+            .fontWeight(selected ? .semibold : .regular)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(selected ? Color.accentColor : Color(NSColor.controlBackgroundColor))
+            .foregroundColor(selected ? .white : .primary)
+            .clipShape(Capsule())
+            .overlay(
+                Capsule().strokeBorder(selected ? Color.clear : Color.secondary.opacity(0.3), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .controlSize(.small)
     }
 }
 

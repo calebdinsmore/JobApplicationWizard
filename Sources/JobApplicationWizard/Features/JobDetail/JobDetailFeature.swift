@@ -38,6 +38,7 @@ struct JobDetailFeature {
         var aiIsLoading: Bool = false
         var aiError: String? = nil
         var apiKey: String
+        var userProfile: UserProfile
         var aiTokenUsage: AITokenUsage = .zero
 
         enum Tab: String, CaseIterable, Equatable {
@@ -49,7 +50,7 @@ struct JobDetailFeature {
             case ai = "AI"
         }
 
-        init(job: JobApplication, apiKey: String = "") {
+        init(job: JobApplication, apiKey: String = "", userProfile: UserProfile = UserProfile()) {
             self.job = job
             self.company = job.company
             self.title = job.title
@@ -63,6 +64,7 @@ struct JobDetailFeature {
             self.contacts = job.contacts
             self.interviews = job.interviews
             self.apiKey = apiKey
+            self.userProfile = userProfile
         }
 
         // Build updated job from current flat fields
@@ -269,10 +271,27 @@ struct JobDetailFeature {
 
                 let key = state.apiKey
                 let job = state.job
+                let profile = state.userProfile
+                var profileSection = ""
+                if !profile.name.isEmpty || !profile.resume.isEmpty {
+                    profileSection = """
+
+                    About the candidate:
+                    \(profile.name.isEmpty ? "" : "Name: \(profile.name)\n")\
+                    \(profile.currentTitle.isEmpty ? "" : "Current Title: \(profile.currentTitle)\n")\
+                    \(profile.location.isEmpty ? "" : "Location: \(profile.location)\n")\
+                    \(profile.skills.isEmpty ? "" : "Skills: \(profile.skills.joined(separator: ", "))\n")\
+                    \(profile.targetRoles.isEmpty ? "" : "Target Roles: \(profile.targetRoles.joined(separator: ", "))\n")\
+                    \(profile.preferredSalary.isEmpty ? "" : "Preferred Salary: \(profile.preferredSalary)\n")\
+                    Work Preference: \(profile.workPreference.rawValue)
+                    \(profile.summary.isEmpty ? "" : "\nSummary: \(profile.summary)")
+                    \(profile.resume.isEmpty ? "" : "\nResume:\n\(profile.resume)")
+                    """
+                }
                 let systemPrompt = """
                 You are an expert career coach integrated into a job application tracker.
-
-                Job: \(job.displayTitle) at \(job.displayCompany)
+                \(profileSection)
+                Target Job: \(job.displayTitle) at \(job.displayCompany)
                 Status: \(job.status.rawValue)
                 Job Description:
                 \(job.jobDescription.isEmpty ? "Not provided" : job.jobDescription)
